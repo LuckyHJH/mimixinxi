@@ -16,6 +16,8 @@
     ],
     "require": {
         "php": ">=5.4.0",
+        "ext-json": "*",
+        "ext-openssl": "*",
         "topthink/framework": "~5.0.24",
         "overtrue/wechat": "~3.1",
         "endroid/qr-code": "^1.9",

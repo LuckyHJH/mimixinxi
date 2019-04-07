@@ -14,9 +14,6 @@ use think\Config;
 class Common extends Api
 {
 
-    protected $noNeedLogin = ['init'];
-    protected $noNeedRight = '*';
-
     public function _initialize()
     {
         parent::_initialize();

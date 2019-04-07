@@ -2,21 +2,17 @@
 
 namespace app\common\controller;
 
-use app\common\library\Auth;
-use think\Config;
-use think\exception\HttpResponseException;
-use think\exception\ValidateException;
-use think\Hook;
+use app\api\library\Auth;
 use think\Lang;
-use think\Loader;
 use think\Request;
-use think\Response;
 
 /**
  * API控制器基类
  */
 class Api
 {
+    protected $user_id = 0;
+    protected $version = 1;
 
     /**
      * @var Request Request 实例
@@ -24,31 +20,15 @@ class Api
     protected $request;
 
     /**
-     * @var bool 验证失败是否抛出异常
-     */
-    protected $failException = false;
-
-    /**
-     * @var bool 是否批量验证
-     */
-    protected $batchValidate = false;
-
-    /**
      * @var array 前置操作方法列表
      */
     protected $beforeActionList = [];
 
     /**
-     * 无需登录的方法,同时也就不需要鉴权了
+     * 无需登录的方法,同时也就不需要鉴权了（一维数组是控制器名称，二维是方法名称）（某模块是空数组代表整个模块都不需要登录）（剩下的接口都必须要登录）
      * @var array
      */
     protected $noNeedLogin = [];
-
-    /**
-     * 无需鉴权的方法,但需要登录
-     * @var array
-     */
-    protected $noNeedRight = [];
 
     /**
      * 权限Auth
@@ -57,10 +37,10 @@ class Api
     protected $auth = null;
 
     /**
-     * 默认响应输出类型,支持json/xml
-     * @var string 
+     * 请求时间
+     * @var int
      */
-    protected $responseType = 'json';
+    protected $time = null;
 
     /**
      * 构造方法
@@ -86,6 +66,11 @@ class Api
         }
     }
 
+    public function _empty()
+    {
+        $this->error('Not Found', 404);
+    }
+
     /**
      * 初始化操作
      * @access protected
@@ -95,18 +80,15 @@ class Api
         //移除HTML标签
         $this->request->filter('strip_tags');
 
+        $module_name = $this->request->module();
+        $controller_name = strtolower($this->request->controller());
+        $action_name = strtolower($this->request->action());
+
         $this->auth = Auth::instance();
 
-        $modulename = $this->request->module();
-        $controllername = strtolower($this->request->controller());
-        $actionname = strtolower($this->request->action());
-
         // token
-        $token = $this->request->server('HTTP_TOKEN', $this->request->request('token', \think\Cookie::get('token')));
+        $token = $this->request->header('token', $this->request->request('token', \think\Cookie::get('token')));
 
-        $path = str_replace('.', '/', $controllername) . '/' . $actionname;
-        // 设置当前请求的URI
-        $this->auth->setRequestUri($path);
         // 检测是否需要验证登录
         if (!$this->auth->match($this->noNeedLogin))
         {
@@ -115,16 +97,7 @@ class Api
             //检测是否登录
             if (!$this->auth->isLogin())
             {
-                $this->error(__('Please login first'), null, 401);
-            }
-            // 判断是否需要验证权限
-            if (!$this->auth->match($this->noNeedRight))
-            {
-                // 判断控制器和方法判断是否有对应权限
-                if (!$this->auth->check($path))
-                {
-                    $this->error(__('You have no permission'), null, 403);
-                }
+                $this->error(__('Please login first'), 401);
             }
         }
         else
@@ -136,15 +109,17 @@ class Api
             }
         }
 
-        $upload = \app\common\model\Config::upload();
-
-        // 上传信息配置后
-        Hook::listen("upload_config_init", $upload);
-
-        Config::set('upload', array_merge(Config::get('upload'), $upload));
+        $this->user_id = $this->auth->getUserId();
 
         // 加载当前控制器语言包
-        $this->loadlang($controllername);
+        $this->loadlang($controller_name);
+
+        $this->time = $this->request->server('REQUEST_TIME');
+    }
+
+    protected function getUserInfo()
+    {
+        return $this->auth->getUser();
     }
 
     /**
@@ -157,65 +132,124 @@ class Api
     }
 
     /**
-     * 操作成功返回的数据
-     * @param string $msg   提示信息
-     * @param mixed $data   要返回的数据
-     * @param int   $code   错误码，默认为0
-     * @param string $type  输出类型
-     * @param array $header 发送的 Header 信息
+     * @explain 获取post和get
+     * @param $key
+     * @param string $type 数据类型，支持int,float和默认的str
+     * @param string $default 默认值
+     * @return float|int|string
+     * @throws \Exception
      */
-    protected function success($msg = '', $data = null, $code = 0, $type = null, array $header = [])
+    protected function input($key = null, $type = 'str', $default = '')
     {
-        $this->result($msg, $data, $code, $type, $header);
+        static $input;
+        if (empty($input)) {
+            $input = request()->put();//post了raw的json字符串过来的话
+            if (empty($input)) {
+                $input = request()->post();
+            }
+            $input = array_merge($input, request()->get());
+        }
+
+        if ($key === null) {
+            return $input;
+        }
+
+        $value = isset($input[$key]) ? $input[$key] : '';
+
+        if (is_array($value)) {
+            return $value;
+        }
+
+        $value = trim($value);
+        //默认值
+        if ($value === '' && !empty($default)) {
+            $value = $default;
+        }
+
+        //担心前端JS没控制好
+        if ($value === 'undefined' || $value === 'null') {
+            if (config('app_debug')) {//调试模式直接报错
+                throw new \Exception('参数错误', 400);
+            } else {
+                trace('参数为undefined或null', 'error');//记下错误日志
+                $value = '';
+            }
+        }
+
+        //修饰
+        if ($type == 'str') {
+            $value = strval($value);
+        } elseif ($type == 'int') {
+            $value = intval($value);
+        } elseif ($type == 'float') {
+            $value = floatval($value);
+        }
+        return $value;
     }
 
     /**
-     * 操作失败返回的数据
-     * @param string $msg   提示信息
-     * @param mixed $data   要返回的数据
-     * @param int   $code   错误码，默认为500
-     * @param string $type  输出类型
-     * @param array $header 发送的 Header 信息
+     * @explain 检查参数是否为空
+     * @param mixed $data
+     * @param bool $cannot_be_zero 默认可以是0，如果确定参数为0是错误的话可以设为true
+     * @throws \Exception
      */
-    protected function error($msg = '', $data = null, $code = 500, $type = null, array $header = [])
+    protected function checkParams($data, $cannot_be_zero = false)
     {
-        $this->result($msg, $data, $code, $type, $header);
+        if (is_array($data)) {
+            foreach ($data as $value) {
+                if ($cannot_be_zero) {
+                    if (empty($value)) {
+                        throw new \Exception('参数错误', 400);
+                    }
+                } else {
+                    if ($value === '' || $value === null) {
+                        throw new \Exception('参数错误', 400);
+                    }
+                }
+            }
+        } else {
+            if ($cannot_be_zero) {
+                if (empty($data)) {
+                    throw new \Exception('参数错误', 400);
+                }
+            } else {
+                if ($data === '' || $data === null) {
+                    throw new \Exception('参数错误', 400);
+                }
+            }
+        }
     }
 
     /**
-     * 返回封装后的 API 数据到客户端
-     * @access protected
-     * @param mixed  $msg    提示信息
-     * @param mixed  $data   要返回的数据
-     * @param int    $code   错误码，默认为0
-     * @param string $type   输出类型，支持json/xml/jsonp
-     * @param array  $header 发送的 Header 信息
-     * @return void
-     * @throws HttpResponseException
+     * @explain 用于处理正常输出
+     * @param $data
+     * @param string $msg
      */
-    protected function result($msg, $data = null, $code = 0, $type = null, array $header = [])
+    protected function output($data = [], $msg = null)
     {
-        $result = [
-            'code' => $code,
-            'message'  => $msg,
-            'data' => $data,
-            'time' => Request::instance()->server('REQUEST_TIME'),
-        ];
-        // 如果未设置类型则自动判断
-        $type = $type ? $type : ($this->request->param(config('var_jsonp_handler')) ? 'jsonp' : $this->responseType);
+        $this->output_json($data, 0, $msg);
+    }
 
-        if (isset($header['statuscode']))
-        {
-            $code = $header['statuscode'];
-            unset($header['statuscode']);
-        }
-        else
-        {
-            //未设置状态码,根据code值判断
-            $code = $code >= 1000 || $code < 200 ? 200 : $code;
-        }
-        $response = Response::create($result, $type, $code)->header($header);
-        throw new HttpResponseException($response);
+    protected function success($msg = '', $data = [])
+    {
+        $this->output_json($data, 0, $msg);
+    }
+
+    protected function error($msg = '', $code = 500, $data = [])
+    {
+        $this->output_json($data, $code, $msg);
+    }
+
+    /**
+     * 统一输出JSON
+     * @param array  $data json中data的内容
+     * @param int    $code 通知码,默认0
+     * @param string $msg 通知信息,默认ok
+     */
+    protected function output_json($data = array(), $code = 0, $msg = null)
+    {
+        $output = get_output_contents($data, $code, $msg);
+        out_json($output);
     }
 
     /**
@@ -253,75 +287,6 @@ class Api
         }
 
         call_user_func([$this, $method]);
-    }
-
-    /**
-     * 设置验证失败后是否抛出异常
-     * @access protected
-     * @param bool $fail 是否抛出异常
-     * @return $this
-     */
-    protected function validateFailException($fail = true)
-    {
-        $this->failException = $fail;
-
-        return $this;
-    }
-
-    /**
-     * 验证数据
-     * @access protected
-     * @param  array        $data     数据
-     * @param  string|array $validate 验证器名或者验证规则数组
-     * @param  array        $message  提示信息
-     * @param  bool         $batch    是否批量验证
-     * @param  mixed        $callback 回调方法（闭包）
-     * @return array|string|true
-     * @throws ValidateException
-     */
-    protected function validate($data, $validate, $message = [], $batch = false, $callback = null)
-    {
-        if (is_array($validate))
-        {
-            $v = Loader::validate();
-            $v->rule($validate);
-        }
-        else
-        {
-            // 支持场景
-            if (strpos($validate, '.'))
-            {
-                list($validate, $scene) = explode('.', $validate);
-            }
-
-            $v = Loader::validate($validate);
-
-            !empty($scene) && $v->scene($scene);
-        }
-
-        // 批量验证
-        if ($batch || $this->batchValidate)
-            $v->batch(true);
-        // 设置错误信息
-        if (is_array($message))
-            $v->message($message);
-        // 使用回调验证
-        if ($callback && is_callable($callback))
-        {
-            call_user_func_array($callback, [$v, &$data]);
-        }
-
-        if (!$v->check($data))
-        {
-            if ($this->failException)
-            {
-                throw new ValidateException($v->getError());
-            }
-
-            return $v->getError();
-        }
-
-        return true;
     }
 
 }

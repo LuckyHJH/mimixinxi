@@ -13,28 +13,50 @@ class ExceptionHandle extends Handle
 
     public function render(Exception $e)
     {
-        // 在生产环境下返回code信息
-        if (!\think\Config::get('app_debug'))
-        {
-            $statuscode = $code = 500;
-            $msg = 'An error occurred';
-            // 验证异常
-            if ($e instanceof \think\exception\ValidateException)
-            {
-                $code = 0;
-                $statuscode = 200;
-                $msg = $e->getError();
-            }
-            // Http异常
-            if ($e instanceof \think\exception\HttpException)
-            {
-                $statuscode = $code = $e->getStatusCode();
-            }
-            return json(['code' => $code, 'msg' => $msg, 'time' => time(), 'data' => null], $statuscode);
+        $code = $e->getCode();
+        empty($code) and $code = 500;
+
+        $msg = $e->getMessage();
+        empty($msg) and $msg = '服务器错误，请稍后重试';
+
+        $output = get_output_contents([], $code, $msg);
+        if (config('app_debug')) {//调试模式就直接输出来看看
+            $output['_debug']['exception'] = $e->getTrace();
         }
 
-        //其它此交由系统处理
-        return parent::render($e);
+        //错误日志（所有错误都记下来）
+        trace($msg, 'error');
+
+        // 验证异常
+        if ($e instanceof \think\exception\ValidateException)
+        {
+            $output['code'] = 400;
+            $output['message'] = $e->getError();
+            return json($output);
+        }
+
+        // Http异常
+        if ($e instanceof \think\exception\HttpException)
+        {
+            $output['code'] = $e->getStatusCode();
+            return json($output);
+        }
+
+        // 4XX客户端错误
+        if ($code >= 400 && $code < 500)
+        {
+            $output['code'] = $code;
+            $output['message'] = $msg;
+            return json($output);
+        }
+
+        // 剩下的就是系统级错误
+        if (!config('app_debug'))
+        {
+            //生产环境的msg内容不能输出给用户看
+            $output['message'] = '服务器错误，请稍后重试';
+        }
+        return json($output);
     }
 
 }
