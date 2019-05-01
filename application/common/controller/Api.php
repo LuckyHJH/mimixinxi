@@ -3,6 +3,8 @@
 namespace app\common\controller;
 
 use app\api\library\Auth;
+use think\Config;
+use think\Hook;
 use think\Lang;
 use think\Request;
 
@@ -28,7 +30,11 @@ class Api
      * 无需登录的方法,同时也就不需要鉴权了（一维数组是控制器名称，二维是方法名称）（某模块是空数组代表整个模块都不需要登录）（剩下的接口都必须要登录）
      * @var array
      */
-    protected $noNeedLogin = [];
+    protected $noNeedLogin = [
+        'user' => [
+            'login',
+        ],
+    ];
 
     /**
      * 权限Auth
@@ -110,6 +116,13 @@ class Api
         }
 
         $this->user_id = $this->auth->getUserId();
+
+        $upload = \app\common\model\Config::upload();
+
+        // 上传信息配置后
+        Hook::listen("upload_config_init", $upload);
+
+        Config::set('upload', array_merge(Config::get('upload') ?: [], $upload));
 
         // 加载当前控制器语言包
         $this->loadlang($controller_name);

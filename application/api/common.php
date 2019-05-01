@@ -121,3 +121,43 @@ function authcode($string, $operation = 'DECODE', $key = '', $expiry = 0)
         return $keyc.str_replace(array('=','+','/'), array('','-','_'), base64_encode($result));
     }
 }
+
+
+//获取资源的URL，不管是本地还是远程的
+function get_full_url($path, $default = '/assets/img/avatar.png') {
+    $default = $default ?: '/assets/img/avatar.png';
+    if (empty($path)) {
+        $url = get_local_file_full_url($default);
+    } elseif (strstr($path,'://')) {//远程资源
+        $url = $path;
+    } else {//本地资源
+        $url = get_local_file_full_url($path, $default);
+    }
+    return url_encode($url);
+}
+
+//获取本地文件的URL
+function get_local_file_full_url($path, $default = '/assets/img/avatar.png')
+{
+    $default = $default ?: '/assets/img/avatar.png';
+    $path = $path ?: $default;
+
+    $path = str_replace('\\','/',$path);
+    ltrim($path, '.');
+    $path['0'] == '/' OR $path = '/'.$path;
+
+    if (!is_file(".$path")) {
+        $path = '/assets/img/avatar.png';
+    }
+
+    $Request = \think\Request::instance();
+    $url = $Request->domain() . $Request->root() . $path;
+    return $url;
+}
+
+//完善的urlencode，因为会把:/也转码
+function url_encode($string) {
+    $entities = array('%3A','%2F');
+    $replacements = array(":","/");
+    return str_replace($entities, $replacements, urlencode($string));
+}
