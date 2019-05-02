@@ -2,6 +2,10 @@
 /.vscode
 /vendor
 /runtime
+composer.lock
+Thumbs.db
 *.log
 .env
 .DS_Store
+
+!thinkphp/library/think/Db.php
