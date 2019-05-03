@@ -20,6 +20,23 @@ class MessageContentModel extends Model
 
 
     /**
+     * 通过message_id获取信息内容的缓存
+     * @param $message_id
+     * @return array
+     * @throws \Exception
+     */
+    public function getCacheByMessageId($message_id)
+    {
+        $cache_key = 'message_contents_' . $message_id;
+        $data = cache($cache_key);
+        if (empty($data)) {
+            $data = $this->getByMessageId($message_id);
+            $data and cache($cache_key, $data);
+        }
+        return $data;
+    }
+
+    /**
      * 通过message_id获取信息内容
      * @param $message_id
      * @return array
@@ -31,6 +48,6 @@ class MessageContentModel extends Model
             'message_id' => $message_id,
             'is_del' => 0,
         ])->order('id asc')->select();
-        return (array)$data;
+        return collection((array)$data)->toArray();
     }
 }

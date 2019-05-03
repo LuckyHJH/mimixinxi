@@ -144,7 +144,7 @@ function get_local_file_full_url($path, $default = '/assets/img/avatar.png')
 
     $path = str_replace('\\','/',$path);
     ltrim($path, '.');
-    $path['0'] == '/' OR $path = '/'.$path;
+    $path['0'] != '/' AND $path = '/'.$path;
 
     if (!is_file(".$path")) {
         $path = '/assets/img/avatar.png';

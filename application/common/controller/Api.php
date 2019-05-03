@@ -121,11 +121,9 @@ class Api
         //别问为什么，问就是框架有BUG。在前面初始化Hook的时候就加载了默认配置，所以自定义配置无效，这里要清除掉
         Cache::$handler = null;
 
+        // 上传信息配置
         $upload = \app\common\model\Config::upload();
-
-        // 上传信息配置后
         Hook::listen("upload_config_init", $upload);
-
         Config::set('upload', array_merge(Config::get('upload') ?: [], $upload));
 
         // 加载当前控制器语言包

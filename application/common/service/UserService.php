@@ -7,6 +7,28 @@ use think\Model;
 class UserService extends Model
 {
     /**
+     * 获取某用户的信息
+     * @param $id
+     * @return array
+     * @throws \Exception
+     */
+    public function getCacheById($id)
+    {
+        $cache_key = 'user_' . $id;
+        $data = cache($cache_key);
+        if (empty($data)) {
+
+            $data = UserModel::get($id);
+            if (empty($data)) {
+                exception('该记录不存在', 500);
+            }
+
+            $data and cache($cache_key, $data);
+        }
+        return $data;
+    }
+
+    /**
      * 更新微信用户信息
      * @param $openid
      * @param $userInfo

@@ -4,7 +4,6 @@ namespace app\common\service;
 use app\common\model\MessageContentModel;
 use app\common\model\MessageModel;
 use app\common\model\MessageUserModel;
-use app\common\model\UserModel;
 use think\Config;
 use think\Model;
 
@@ -131,7 +130,7 @@ class MessageService extends Model
      */
     public function canUserRead($message_id, $user_id)
     {
-        $messageRow = (new MessageModel)->getMessage($message_id);
+        $messageRow = (new MessageModel())->getMessage($message_id);
 
         $is_mine = $messageRow['user_id'] == $user_id;
 
@@ -213,7 +212,7 @@ class MessageService extends Model
         $MessageContentService = new MessageContentService();
 
         foreach ($data as $item) {
-            $title = $MessageContentService->getTitle($item['id']);
+            $title = $MessageContentService->getTitleCache($item['id']);
             $list[] = [
                 'id' => $item['id'],
                 'title' => $title,
@@ -271,10 +270,7 @@ class MessageService extends Model
                 'avatar' => get_full_url('/assets/img/avatar.png'),
             ];
         } else {
-            $userRow = UserModel::get($user_id);
-            if (empty($userRow)) {
-                exception('该记录不存在', 500);
-            }
+            $userRow = (new UserService())->getCacheById($user_id);
             return [
                 'nickname' => $userRow['nickname'],
                 'avatar' => get_full_url($userRow['avatar']),

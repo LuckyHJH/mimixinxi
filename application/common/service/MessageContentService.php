@@ -15,18 +15,23 @@ class MessageContentService extends Model
     public function getContents($message_id)
     {
         $contents = [];
-        $list = (new MessageContentModel())->getByMessageId($message_id);
+        $list = (new MessageContentModel())->getCacheByMessageId($message_id);
         foreach ($list as $item) {
             if ($item['type'] == 'text') {
-                $contents[] = $item;
+                $contents[] = [
+                    'type' => $item['type'],
+                    'data' => $item['data'] ?: '',
+                ];
             } elseif ($item['type'] == 'image') {
-                $item['data'] = url('api/message/image', ['message_id' => $message_id, 'url' => $item['data']], false, true);
-                $contents[] = $item;
+                $contents[] = [
+                    'type' => $item['type'],
+                    'data' => $item['data'] ? url('api/message/image', ['message_id' => $message_id, 'url' => $item['data']], false, true) : '',
+                ];
             } else {
                 continue;
             }
         }
-        return $list;
+        return $contents;
     }
 
     /**
@@ -63,6 +68,23 @@ class MessageContentService extends Model
     {
         $path = substr($fileName, 0, 2);
         return $prefix . "/uploads/message/{$path}/{$fileName}";
+    }
+
+    /**
+     * 获取信息的标题的缓存
+     * @param $message_id
+     * @return string
+     * @throws \Exception
+     */
+    public function getTitleCache($message_id)
+    {
+        $cache_key = 'message_title_' . $message_id;
+        $data = cache($cache_key);
+        if (empty($data)) {
+            $data = $this->getTitle($message_id);
+            $data and cache($cache_key, $data);
+        }
+        return $data;
     }
 
     /**
