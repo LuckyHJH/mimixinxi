@@ -3,6 +3,7 @@
 namespace app\common\controller;
 
 use app\api\library\Auth;
+use think\Cache;
 use think\Lang;
 use think\Request;
 
@@ -40,7 +41,7 @@ class Api
      * 请求时间
      * @var int
      */
-    protected $time = null;
+    protected $request_time = null;
 
     /**
      * 构造方法
@@ -111,10 +112,13 @@ class Api
 
         $this->user_id = $this->auth->getUserId();
 
+        //别问为什么，问就是框架有BUG。在前面初始化Hook的时候就加载了默认配置，所以自定义配置无效，这里要清除掉
+        Cache::$handler = null;
+
         // 加载当前控制器语言包
         $this->loadlang($controller_name);
 
-        $this->time = $this->request->server('REQUEST_TIME');
+        $this->request_time = $this->request->server('REQUEST_TIME');
     }
 
     protected function getUserInfo()
