@@ -103,20 +103,21 @@ class MessageContentService extends Model
             'is_del' => 0,
         ])->order('id asc')->find();
 
-        if (empty($row)) {
+        if ($row) {
+            $text = mb_strcut(strval($row['data']), 0, 30, 'utf-8');//截取10个中文
+        } else {
             //没有的话就算图片数量
             $count = $MessageContentModel->field('data')->where([
                 'message_id' => $message_id,
                 'type' => 2,
                 'is_del' => 0,
             ])->order('id asc')->count();
-            if (empty($count)) {
-                $text = '';
-            } else {
+
+            if ($count) {
                 $text = "[{$count}张图片]";
+            } else {
+                $text = '';
             }
-        } else {
-            $text = strval($row['data']);
         }
 
         return $text;

@@ -2,6 +2,7 @@
 namespace app\api\controller;
 
 use app\common\controller\Api;
+use app\common\service\MessageCaptureScreenService;
 use app\common\service\MessageContentService;
 use app\common\service\MessageService;
 use think\Config;
@@ -188,5 +189,18 @@ class Message extends Api
         $data = (new MessageService())->readList($this->user_id, $page);
 
         $this->output($data);
+    }
+
+    /**
+     * 截屏事件
+     * @throws \Exception
+     */
+    public function capture_screen()
+    {
+        $message_id = $this->input('message_id', 'int');
+
+        (new MessageCaptureScreenService())->add($this->user_id, $message_id);
+
+        $this->success('请不要截图！违规3次后将不能再查看消息');
     }
 }
