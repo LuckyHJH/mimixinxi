@@ -110,9 +110,9 @@ class MessageService extends Model
 
         //规则
         $data['rules'] = [
-            'reading_amount' => $messageRow['reading_amount'],
-            'second_limit' => $messageRow['second_limit'],
-            'user_limit' => $messageRow['user_limit'],
+            ['type' => 'reading_amount', 'data' => $messageRow['reading_amount']],
+            ['type' => 'second_limit', 'data' => $messageRow['second_limit']],
+            ['type' => 'user_limit', 'data' => $messageRow['user_limit']],
         ];
 
         //作者信息
