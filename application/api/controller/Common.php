@@ -135,4 +135,17 @@ class Common extends Api
         }
     }
 
+    /**
+     * 前端的错误日志
+     * @throws \Exception
+     */
+    public function error_log()
+    {
+        $message = $this->input('message');
+        $data = $this->input('data');
+
+        add_error_log($message, $data);
+
+        $this->success();
+    }
 }

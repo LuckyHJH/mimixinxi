@@ -25,7 +25,10 @@ class ExceptionHandle extends Handle
         }
 
         //错误日志（所有错误都记下来）
-        trace($msg, 'error');
+        add_error_log($msg, [
+            'code' => $code,
+            'trace' => $e->getTrace(),
+        ]);
 
         // 验证异常
         if ($e instanceof \think\exception\ValidateException)

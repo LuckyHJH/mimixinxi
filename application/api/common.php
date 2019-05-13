@@ -44,6 +44,25 @@ function get_output_contents($data = [], $code = 0, $msg = null)
 }
 
 /**
+ * 记下错误日志
+ * @param string $message
+ * @param array $data
+ */
+function add_error_log($message = 'error', $data = [])
+{
+    $log = [
+        'url' => request()->url(true),
+        'get' => request()->get(),
+        'post' => request()->put() ?: request()->post(),
+        'header' => request()->header(),
+    ];
+    $log['message'] = $message;
+    $log['data'] = $data;
+
+    trace($log, 'error');
+}
+
+/**
  * @param string $string 原文或者密文
  * @param string $operation 操作(ENCODE | DECODE), 默认为 DECODE
  * @param string $key 密钥
