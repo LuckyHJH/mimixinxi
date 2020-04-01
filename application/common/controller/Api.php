@@ -35,6 +35,9 @@ class Api
         'user' => [
             'login',
         ],
+        'common' => [
+            'error_log',
+        ],
     ];
 
     /**

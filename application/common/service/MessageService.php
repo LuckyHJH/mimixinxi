@@ -201,7 +201,7 @@ class MessageService extends Model
             (new MessageUserService())->read($user_id, $message_id);
         }
 
-        $content = (new MessageContentService())->getContents($message_id);
+        $content = (new MessageContentService())->getContents($message_id, $user_id);
         $data = [
             'content' => $content,
         ];

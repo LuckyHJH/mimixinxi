@@ -9,13 +9,15 @@ class MessageContentService extends Model
     /**
      * 获取内容列表
      * @param $message_id
+     * @param $user_id
      * @return array
      * @throws \Exception
      */
-    public function getContents($message_id)
+    public function getContents($message_id, $user_id)
     {
         $contents = [];
         $list = (new MessageContentModel())->getCacheByMessageId($message_id);
+        $auth = \app\api\library\Auth::instance(['expire' => 10]);//10秒过期
         foreach ($list as $item) {
             if ($item['type'] == 'text') {
                 $contents[] = [
@@ -23,9 +25,13 @@ class MessageContentService extends Model
                     'data' => $item['data'] ?: '',
                 ];
             } elseif ($item['type'] == 'image') {
+                $url = $item['data'] ? url('api/message/image', ['message_id' => $message_id, 'url' => $item['data']], false, true) : '';
+                if ($url) {
+                    $url .= '?token=' . $auth->encryptToken($user_id);
+                }
                 $contents[] = [
                     'type' => $item['type'],
-                    'data' => $item['data'] ? url('api/message/image', ['message_id' => $message_id, 'url' => $item['data']], false, true) : '',
+                    'data' => $url,
                 ];
             } else {
                 continue;
