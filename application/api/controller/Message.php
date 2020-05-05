@@ -76,7 +76,7 @@ class Message extends Api
         ];
         $savekey = $upload['savekey'];
         $savekey = str_replace(array_keys($replaceArr), array_values($replaceArr), $savekey);
-        $savekey = (new MessageContentService())->getUrlByFileName($savekey);//文件名是{sha1}.{suffix}，再通过这个方法获取相对路径
+        $savekey = (new MessageContentService())->getPathByFileName($savekey);//文件名是{sha1}.{suffix}，再通过这个方法获取相对路径
 
         $uploadDir = substr($savekey, 0, strripos($savekey, '/') + 1);
         $fileName = substr($savekey, strripos($savekey, '/') + 1);
@@ -203,11 +203,12 @@ class Message extends Api
 
         (new MessageCaptureScreenService())->add($this->user_id, $message_id);
 
-        $this->success('请不要截图！违规3次后将不能再查看消息');
+        $capture_screen_limit = Config::get('capture_screen_limit');
+        $this->success('请不要截图！违规'.$capture_screen_limit.'次后将不能再查看任何消息');
     }
 
     /**
-     * 举报
+     * 投诉
      * @throws \Exception
      */
     public function report()
@@ -217,7 +218,7 @@ class Message extends Api
         $this->checkParams($message_id);
 
         if ((new MessageReportService())->add($this->user_id, $message_id, $type)) {
-            $this->success('举报成功！');
+            $this->success('投诉成功！');
         } else {
             $this->error();
         }

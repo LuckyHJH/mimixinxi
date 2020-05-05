@@ -36,6 +36,7 @@ class Api
             'login',
         ],
         'common' => [
+            'init',
             'error_log',
         ],
     ];
@@ -154,7 +155,7 @@ class Api
      * @param $key
      * @param string $type 数据类型，支持int,float和默认的str
      * @param string $default 默认值
-     * @return float|int|string
+     * @return mixed
      * @throws \Exception
      */
     protected function input($key = null, $type = 'str', $default = '')
@@ -174,7 +175,7 @@ class Api
 
         $value = isset($input[$key]) ? $input[$key] : '';
 
-        if (is_array($value)) {
+        if (is_array($value) || is_null($value)) {
             return $value;
         }
 
@@ -208,14 +209,14 @@ class Api
     /**
      * @explain 检查参数是否为空
      * @param mixed $data
-     * @param bool $cannot_be_zero 默认可以是0，如果确定参数为0是错误的话可以设为true
+     * @param bool $can_be_zero 默认不可以是0，如果确定参数为0是正常的话可以设为true
      * @throws \Exception
      */
-    protected function checkParams($data, $cannot_be_zero = false)
+    protected function checkParams($data, $can_be_zero = false)
     {
         if (is_array($data)) {
             foreach ($data as $value) {
-                if ($cannot_be_zero) {
+                if (!$can_be_zero) {
                     if (empty($value)) {
                         throw new \Exception('参数错误', 400);
                     }
@@ -226,7 +227,7 @@ class Api
                 }
             }
         } else {
-            if ($cannot_be_zero) {
+            if (!$can_be_zero) {
                 if (empty($data)) {
                     throw new \Exception('参数错误', 400);
                 }
@@ -255,6 +256,7 @@ class Api
 
     protected function error($msg = '', $code = 500, $data = [])
     {
+        empty($msg) and $msg = '服务器错误，请稍后再试';
         $this->output_json($data, $code, $msg);
     }
 

@@ -45,6 +45,7 @@ class MessageService extends Model
         }
 
         $time = time();
+        $all_text = [];
         $this->startTrans();
 
         $data = [
@@ -81,9 +82,28 @@ class MessageService extends Model
             if (empty($result)) {
                 exception('db error', 500);
             }
+
+            //文字类型内容，汇合在一起进行安全检测
+            if ($type == MessageContentModel::$typeId['text']) {
+                $all_text[] = $content['data'];
+            }
         }
 
         $this->commit();
+
+        //安全内容检测
+        $mp = new \MiniProgram();
+        $SecCheck = new \MiniProgram\Api\SecCheck($mp);
+        try {
+            $message_str = implode('；', $all_text);
+            $isRisky = $SecCheck->messageIsRisky($message_str);
+            if ($isRisky) {
+                notice('发布风险内容', '文本内容', $user_id, $message_str);
+            }
+        } catch (\MiniProgram\ApiException $apiException) {
+            add_error_log('messageIsRisky failed', $apiException);
+        }
+
         return $row;
     }
 
@@ -147,34 +167,42 @@ class MessageService extends Model
         }
 
         $MessageUserModel = new MessageUserModel();
+        $readCount = $MessageUserModel->readCount($user_id, $message_id);//看过的次数
         $no_rules = true;//无规则限制
 
-        if ($result['can_read'] && $messageRow['reading_amount']) {
+        if ($messageRow['reading_amount']) {
             //判断次数
             $no_rules = false;
-            $readCount = $MessageUserModel->readCount($user_id, $message_id);
             if ($readCount >= $messageRow['reading_amount']) {
                 $result['can_read'] = false;
                 $result['reason'] = '此消息已销毁';
+                return $result;
             }
         }
 
-        if ($result['can_read'] && $messageRow['user_limit']) {
+        //已经看过就忽略后面的条件，可以继续看
+        if ($readCount > 0) {
+            return $result;
+        }
+
+        if ($messageRow['user_limit']) {
             //判断人数
             $no_rules = false;
             $userCount = $MessageUserModel->userCount($message_id);
             if ($userCount >= $messageRow['user_limit']) {
                 $result['can_read'] = false;
                 $result['reason'] = '已超出人数限制，不能查看';
+                return $result;
             }
         }
 
-        if ($result['can_read'] && !$no_rules) {
+        if (!$no_rules) {
             //判断是否截屏过，没设置规则的消息就不用判断
             $captureScreenTotalCount = (new MessageCaptureScreenService())->totalCount($user_id);
-            if ($captureScreenTotalCount >= 3) {
+            if ($captureScreenTotalCount >= Config::get('capture_screen_limit')) {
                 $result['can_read'] = false;
                 $result['reason'] = '违规截屏次数超过要求，禁止查看消息';
+                return $result;
             }
         }
 

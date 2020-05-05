@@ -7,7 +7,7 @@ use think\Model;
 class MessageReportService extends Model
 {
     /**
-     * 用户举报
+     * 用户投诉
      * @param $user_id
      * @param $message_id
      * @param int $type
@@ -22,6 +22,7 @@ class MessageReportService extends Model
             'type' => $type,
             'create_time' => time(),
         ]);
+        notice('投诉', "信息ID：$message_id", "$user_id");
         return $result ? true : false;
     }
 

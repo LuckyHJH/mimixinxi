@@ -73,4 +73,41 @@ class Common
         $this->moduleInit($request);
     }
 
+    /**
+     * @param \app\common\model\Attachment $attachment
+     */
+    public function uploadAfter($attachment)
+    {
+        $data = $attachment->getData();
+        //$data包含以下内容
+        //"user_id": 1,
+        //"filesize": 331,
+        //"imagewidth": 148,
+        //"imageheight": 148,
+        //"imagetype": "png",
+        //"mimetype": "image/png",
+        //"url": "/uploads/message/af/af3226c02f2f68b68fe72c3e7171a4dc490edd19.png",
+        //"uploadtime": 1586585387,
+        //"storage": "local",
+        //"sha1": "af3226c02f2f68b68fe72c3e7171a4dc490edd19",
+        //"createtime": 1586585387,
+        //"updatetime": 1586585387,
+        //"id": "17"
+
+        //图片类型内容，安全检测（像素不超过750x1334）
+        $thumb_path = (new \app\common\service\MessageContentService())->thumbImage(".{$data['url']}", $data['imagetype']);
+
+        $mp = new \MiniProgram();
+        $SecCheck = new \MiniProgram\Api\SecCheck($mp);
+
+        try {
+            $isRisky = $SecCheck->imageIsRisky($thumb_path);
+            if ($isRisky) {
+                notice('发布风险内容', '图片内容', $data['user_id'], $data['url']);
+            }
+        } catch (\MiniProgram\ApiException $apiException) {
+            add_error_log('imageIsRisky failed', $apiException);
+        }
+    }
+
 }

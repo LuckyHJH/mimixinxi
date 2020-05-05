@@ -17,6 +17,8 @@
     "require": {
         "php": ">=5.4.0",
         "ext-json": "*",
+        "ext-gd": "*",
+        "ext-curl": "*",
         "ext-openssl": "*",
         "ext-mbstring": "*",
         "topthink/framework": "~5.0.24",
