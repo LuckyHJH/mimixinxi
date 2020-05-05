@@ -21,7 +21,7 @@ function out_json($output = [])
 function get_output_contents($data = [], $code = 0, $msg = null)
 {
     $code = intval($code);
-    $msg = is_null($msg) ? ($code == 0 ? 'OK' : 'Error') : $msg;
+    $msg = is_null($msg) ? ($code == 0 ? 'OK' : __('An unexpected error occurred')) : $msg;
 
     $output = [
         'code' => $code,
@@ -179,4 +179,16 @@ function url_encode($string) {
     $entities = array('%3A','%2F');
     $replacements = array(":","/");
     return str_replace($entities, $replacements, urlencode($string));
+}
+
+
+/**
+ * 通知提醒
+ * @param string $type
+ * @param string $title
+ * @param string $nickname
+ * @param string $remark
+ */
+function notice($type, $title, $nickname = '', $remark = '')
+{
 }

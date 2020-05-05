@@ -36,6 +36,7 @@ class Api
             'login',
         ],
         'common' => [
+            'init',
             'error_log',
         ],
     ];
@@ -255,6 +256,7 @@ class Api
 
     protected function error($msg = '', $code = 500, $data = [])
     {
+        empty($msg) and $msg = '服务器错误，请稍后再试';
         $this->output_json($data, $code, $msg);
     }
 

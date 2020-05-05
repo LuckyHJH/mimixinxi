@@ -24,7 +24,7 @@ class User extends Api
 
         $aResult = $this->mpLogin($code, $userInfo);
         if (!isset($aResult['id'])) {
-            exception('登录失败请稍后再试', 500);
+            $this->error('登录失败请稍后再试');
         }
 
         $this->output([

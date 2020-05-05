@@ -31,4 +31,8 @@ return [
     'log_write'    => [],
     // 应用结束
     'app_end'      => [],
+    // 上传附件后
+    'upload_after' => [
+        'app\\common\\behavior\\Common',
+    ],
 ];
